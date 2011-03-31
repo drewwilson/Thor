@@ -9,7 +9,6 @@ require_once('security.php');
 require_once("config.php");
 
 // global variables
-define('local', true);
 $GLOBALS['date'] = gmdate('Y-m-d G:i:s');
 
 
