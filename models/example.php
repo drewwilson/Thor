@@ -5,6 +5,7 @@ class Example extends Model {
 	function Example() {
 		parent::Model();
 		$this->load(array('user'));
+		$this->salt_fields(array('password'));
 	}
 	
 }

@@ -3,9 +3,15 @@ define('DIRECTSCRIPT', 'TRUE');
 
 // load global functions
 require_once('functions.php');
+require_once('security.php');
 
-// load global vars and db vars
-require_once("globals.php");
+// load config (db connection / security global)
+require_once("config.php");
+
+// global variables
+define('local', true);
+$GLOBALS['date'] = gmdate('Y-m-d G:i:s');
+
 
 session_start();
 

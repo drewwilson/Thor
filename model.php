@@ -17,11 +17,13 @@ class Model {
 	function Model($params=array()){
 		$this->_model = strtolower(get_class($this));
 		$this->_table = plural($this->_model);
+		$this->security = new Security();
 		$this->where_ary = array();
 		$this->where_or_ary = array();
 		$this->where_str = "";
 		$this->disabled = array();
 		$this->removals = array();
+		$this->salt_fields = array();
 		$this->unique_fields = array();
 		$this->create_timestamps = array();
 		$this->update_timestamps = array();
@@ -107,6 +109,9 @@ class Model {
 					}
 				}
 			}
+		}
+		if (!empty($this->salt_fields)){
+			$this->security->encrypt($fields, $where_ary);
 		}
 	}
 	
@@ -276,7 +281,12 @@ class Model {
 						$row[$this->defaults['include']] = $this->{$this->defaults['include']}->results['items'];
 						$this->{$this->defaults['include']}->results['items'] = array();
 					}
-					foreach ($this->removals as $prop) unset($row[$prop]);
+					if (!empty($this->removals)){
+						foreach ($this->removals as $prop) unset($row[$prop]);
+					}
+					if (!empty($this->salt_fields)){
+						$this->security->decrypt($fields, $rec);
+					}
 					$json[] = $row;
 				}
 			}
