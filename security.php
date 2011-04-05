@@ -10,7 +10,7 @@ class Security {
 	
 	function _docrypt($fields, &$rec, $encrypt){
 		if ($fields){
-			foreach($fields as $fields){
+			foreach($fields as $field){
 				if (isset($rec[$field]) && $rec[$field] != ''){
 					if ($encrypt){
 						$this->_encrypt_data($rec[$field]);

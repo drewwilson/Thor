@@ -20,7 +20,6 @@ require_once('model.php');
 require_once('output.php');
 
 $api = new Api();
-$api->request_uri_ignore = array('api');
 
 $api->process_request();
 

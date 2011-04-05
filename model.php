@@ -9,6 +9,7 @@ class Model {
 		where_str = SQL where string
 		disabled = array of field names that aren’t update-able (will show in results)
 		removals = array of field names that aren’t shown in results
+		salt_fields = array of field names that need to be salted/unsalted to store values securely
 		unique_fields = array of field names that need to stay unique system wide
 		create_timestamps = array of field names that get a timestamp on creation
 		update_timestamps = array of field names that get a timestamp on update
@@ -111,7 +112,7 @@ class Model {
 			}
 		}
 		if (!empty($this->salt_fields)){
-			$this->security->encrypt($fields, $where_ary);
+			$this->security->encrypt($this->salt_fields, $where_ary);
 		}
 	}
 	
@@ -285,7 +286,7 @@ class Model {
 						foreach ($this->removals as $prop) unset($row[$prop]);
 					}
 					if (!empty($this->salt_fields)){
-						$this->security->decrypt($fields, $rec);
+						$this->security->decrypt($this->salt_fields, $rec);
 					}
 					$json[] = $row;
 				}

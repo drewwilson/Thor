@@ -9,7 +9,6 @@ class Api {
 		$this->method = 'get';
 		$this->allowed_methods = array('get', 'post', 'put', 'delete');
 		$this->params = array();
-		$this->request_uri_ignore = array('api');
 		$this->request_uri_raw = '';
 		$this->request_uri = array();
 		$this->output = new Output();
@@ -35,7 +34,7 @@ class Api {
 		$this->request_uri = explode("/", $this->request_uri_raw);
 		
 		foreach ($this->request_uri as $k => &$v){
-			if ($v == "" || in_array($v, $this->request_uri_ignore)) {
+			if ($v == "" || in_array($v, $GLOBALS['request_uri_ignore'])) {
 				unset($this->request_uri[$k]);
 			} else {
 				if (strpos($v, "?") > -1) {
