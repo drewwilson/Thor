@@ -7,5 +7,9 @@ $GLOBALS['security'] = array(
 	'mcrypt' => array('cipher' => MCRYPT_RIJNDAEL_256, 'mode' => MCRYPT_MODE_ECB),
 	'key' => 'thorapi'
 );
+
 $GLOBALS['request_uri_ignore'] = array('api');
+
+$GLOBALS['date'] = gmdate('Y-m-d G:i:s');
+
 ?>

@@ -15,7 +15,7 @@ class Model {
 		update_timestamps = array of field names that get a timestamp on update
 		results = result stack (local)
 	*/
-	function Model($params=array()){
+	function Model(){
 		$this->_model = strtolower(get_class($this));
 		$this->_table = plural($this->_model);
 		$this->security = new Security();
@@ -59,7 +59,7 @@ class Model {
 			}
 		} else {
 			$modelName = ucfirst($model);
-			if (!isset($this->$model)){
+			if (!class_exists($model)){
 				if (!file_exists('models/'.$model.'.php')){
 					$this->_error('error', 'Unable to locate the model you have specified: '.$modelName);
 				}

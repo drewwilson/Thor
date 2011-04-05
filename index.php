@@ -8,10 +8,6 @@ require_once('security.php');
 // load config (db connection / security global)
 require_once("config.php");
 
-// global variables
-$GLOBALS['date'] = gmdate('Y-m-d G:i:s');
-
-
 session_start();
 
 // load main classes
