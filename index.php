@@ -17,6 +17,8 @@ require_once('output.php');
 
 $api = new Api();
 
+$api->security->access_control();
+
 $api->process_request();
 
 $api->output->send_output('json');

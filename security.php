@@ -8,6 +8,15 @@ class Security {
 		$this->key = $GLOBALS['security']['key'];
 	}
 	
+	function access_control(){
+		if($GLOBALS['security']['whitelist_ip'] && count($GLOBALS['security']['whitelist_ip']) > 0) {
+			if(!in_array($_SERVER['REMOTE_ADDR'], $GLOBALS['security']['whitelist_ip'])){
+				$api =& get_instance();
+				$api->output->error('unauthorized', 'Access Denied');
+			}
+	    }
+	}
+	
 	function _docrypt($fields, &$rec, $encrypt){
 		if ($fields){
 			foreach($fields as $field){

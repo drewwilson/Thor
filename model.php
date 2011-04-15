@@ -9,7 +9,7 @@ class Model {
 		where_str = SQL where string
 		disabled = array of field names that aren’t update-able (will show in results)
 		removals = array of field names that aren’t shown in results
-		salt_fields = array of field names that need to be salted/unsalted to store values securely
+		encrypt_fields = array of field names that need to be encyrpted/decrypted to store values securely
 		unique_fields = array of field names that need to stay unique system wide
 		create_timestamps = array of field names that get a timestamp on creation
 		update_timestamps = array of field names that get a timestamp on update
@@ -18,13 +18,12 @@ class Model {
 	function Model(){
 		$this->_model = strtolower(get_class($this));
 		$this->_table = plural($this->_model);
-		$this->security = new Security();
 		$this->where_ary = array();
 		$this->where_or_ary = array();
 		$this->where_str = "";
 		$this->disabled = array();
 		$this->removals = array();
-		$this->salt_fields = array();
+		$this->encrypt_fields = array();
 		$this->unique_fields = array();
 		$this->create_timestamps = array();
 		$this->update_timestamps = array();
@@ -111,8 +110,9 @@ class Model {
 				}
 			}
 		}
-		if (!empty($this->salt_fields)){
-			$this->security->encrypt($this->salt_fields, $where_ary);
+		if (!empty($this->encrypt_fields)){
+			$api =& get_instance();
+			$api->security->encrypt($this->encrypt_fields, $where_ary);
 		}
 	}
 	
@@ -285,8 +285,9 @@ class Model {
 					if (!empty($this->removals)){
 						foreach ($this->removals as $prop) unset($row[$prop]);
 					}
-					if (!empty($this->salt_fields)){
-						$this->security->decrypt($this->salt_fields, $rec);
+					if (!empty($this->encrypt_fields)){
+						$api =& get_instance();
+						$api->security->decrypt($this->encrypt_fields, $rec);
 					}
 					$json[] = $row;
 				}

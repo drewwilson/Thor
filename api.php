@@ -11,6 +11,7 @@ class Api {
 		$this->params = array();
 		$this->request_uri_raw = '';
 		$this->request_uri = array();
+		$this->security = new Security();
 		$this->output = new Output();
 		$this->defaults = array(
 			'limit' => null,
@@ -26,6 +27,7 @@ class Api {
 	}
 
 	function process_request(){
+
 		$this->method = strtolower($_SERVER['REQUEST_METHOD']);
 		if (!in_array($this->method, $this->allowed_methods)) {
 			$this->output->error('error', 'Method not supported: '.$this->method);
