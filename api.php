@@ -59,9 +59,9 @@ class Api {
 		$this->$model->defaults = $this->defaults;
 		
 		// run the request method
-		$this->$model->{$this->method}();
+		$results = $this->$model->process_request($this->method);
 		
-		$this->$model->push_results();
+		$this->$model->push_results($results);
 	}
 	
 	function load_first_model($model){
