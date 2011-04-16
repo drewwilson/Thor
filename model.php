@@ -6,6 +6,7 @@ class Model {
 	Variables:
 		where_ary = condition stack
 		where_or_ary = "OR" condition stack
+		current_where_ary = the current condition stack being processed
 		where_str = SQL where string
 		disabled = array of field names that aren’t update-able (will show in results)
 		removals = array of field names that aren’t shown in results
@@ -20,6 +21,7 @@ class Model {
 		$this->_table = plural($this->_model);
 		$this->where_ary = array();
 		$this->where_or_ary = array();
+		$this->current_where_ary = array();
 		$this->where_str = "";
 		$this->disabled = array();
 		$this->removals = array();
@@ -27,7 +29,7 @@ class Model {
 		$this->unique_fields = array();
 		$this->create_timestamps = array();
 		$this->update_timestamps = array();
-		$this->results = array('items' => array(), 'count' => 0);
+		$this->results = array('count' => 0, 'items' => array());
 		$this->defaults = array(
 			'limit' => null,
 			'offset' => null,
@@ -40,9 +42,9 @@ class Model {
 	function push_results($results=array()){
 		$api =& get_instance();
 		if (empty($results)){
-			$api->output->results[] = $this->results;
+			$api->output->results = $this->results;
 		} else {
-			$api->output->results[] = $results;
+			$api->output->results = $results;
 		}
 	}
 
@@ -97,22 +99,24 @@ class Model {
 		}
 	}
 	
-	function prep_where_ary(&$where_ary, $method=''){
-		foreach ($this->disabled as $prop) unset($where_ary[$prop]);
-		if (($method == 'post' || $method == 'put') && !empty($this->unique_fields)){
-			foreach ($this->unique_fields as $unique){
-				if (isset($where_ary[$unique])){
-					$id = 0;
-					if (isset($where_ary['id'])) { $id = $where_ary['id']; }
-					if (!$this->_unique_check("SELECT id FROM `{$this->_table}` WHERE `$unique` = '{$where_ary[$unique]}' and id != $id LIMIT 1")){
-						$this->_error('error', $unique.' already exists');
+	function prep_where_ary($method=''){
+		foreach($this->where_ary as &$where_ary){
+			foreach ($this->disabled as $prop) unset($where_ary[$prop]);
+			if (($method == 'post' || $method == 'put') && !empty($this->unique_fields)){
+				foreach ($this->unique_fields as $unique){
+					if (isset($where_ary[$unique])){
+						$id = 0;
+						if (isset($where_ary['id'])) { $id = $where_ary['id']; }
+						if (!$this->_unique_check("SELECT id FROM `{$this->_table}` WHERE `$unique` = '{$where_ary[$unique]}' and id != $id LIMIT 1")){
+							$this->_error('error', $unique.' already exists');
+						}
 					}
 				}
 			}
-		}
-		if (!empty($this->encrypt_fields)){
-			$api =& get_instance();
-			$api->security->encrypt($this->encrypt_fields, $where_ary);
+			if (!empty($this->encrypt_fields)){
+				$api =& get_instance();
+				$api->security->encrypt($this->encrypt_fields, $where_ary);
+			}
 		}
 	}
 	
@@ -160,14 +164,14 @@ class Model {
 		}
 	}
 
-	function _insert_str(){
+	function _insert_str($where_ary){
 		$i = 0;
 		$fields = ""; $upd_fields = "";
 		$values = array();
 		$where = "";
-		if (!empty($this->where_ary)){
-			foreach ($this->where_ary as $k => $v){
-				if (count($this->where_ary) > 1 && $i > 0){
+		if (!empty($where_ary)){
+			foreach ($where_ary as $k => $v){
+				if (count($where_ary) > 1 && $i > 0){
 					$fields .= ", ";
 					if ($k != 'id') $upd_fields .= ", ";
 					foreach ($values as &$value) {
@@ -210,10 +214,10 @@ class Model {
 			$join_table = $this->defaults['joins'];
 			$join = " LEFT JOIN `{$this->defaults['joins']}` ON `{$this->_table}`.".singular($this->defaults['joins'])."_id = {$this->defaults['joins']}.id ";
 			$where_tmp = array();
-			foreach($this->where_ary as $k => $v){
+			foreach($where_ary as $k => $v){
 				$where_tmp[$this->_table.'`.`'.$k] = $v;
 			}
-			$this->where_ary = $where_tmp;
+			$where_ary = $where_tmp;
 			$this->_where_str($where_ary, "WHERE ");
 			return $this->_run_query("SELECT `{$this->_table}`.*, `$join_table`.* FROM `{$this->_table}` $join {$this->where_str} {$this->defaults['order']} {$this->defaults['limit']}", true);
 		} else {
@@ -305,43 +309,42 @@ class Model {
 	}
 	/* END sql functions */
 	
-	function get($get_count=true){
-		foreach ($this->where_ary as $where_ary){
-			$this->prep_where_ary($where_ary);
-			$results = $this->_sql_select($where_ary);
-			if ($get_count){
-				$this->results['count'] += $results['count'];
-			}
-			$this->results['items'] = array_merge($results['items'], $this->results['items']);
+	function process_request($method){
+		$this->prep_where_ary($this->where_ary, $method);
+		foreach($this->where_ary as $where_ary){
+			$this->current_where_ary = $where_ary;
+			$this->{$method}();
 		}
+		return $this->results;
+	}
+	
+	function get($get_count=true){
+		$results = $this->_sql_select($this->current_where_ary);
+		if ($get_count){
+			$this->results['count'] += $results['count'];
+		}
+		$this->results['items'] = array_merge($results['items'], $this->results['items']);
+		return $this->results;
 	}
 	
 	function put(){
-		foreach ($this->where_ary as $where_ary){
-			$this->prep_where_ary($where_ary);
-			$results = $this->_sql_update($where_ary);
-			$this->results['count'] += $results['count'];
-		}
-		$this->get(false);
+		$results = $this->_sql_update($this->current_where_ary);
+		$this->results['count'] += $results['count'];
+		return $this->get(false);
 	}
 	
 	function post(){
-		foreach ($this->where_ary as $where_ary){
-			$this->prep_where_ary($where_ary);
-			$results = $this->_sql_insert($where_ary);
-			$this->results['count'] += $results['count'];
-		}
-		$this->get(false);
+		$results = $this->_sql_insert($this->current_where_ary);
+		$this->results['count'] += $results['count'];
+		return $this->get(false);
 	}
 	
 	function delete(){
 		$this->get(false);
 		// run delete after get(), that way we can still return the records
-		foreach ($this->where_ary as $where_ary){
-			$this->prep_where_ary($where_ary);
-			$results = $this->_sql_delete($where_ary);
-			$this->results['count'] += $results['count'];
-		}
+		$results = $this->_sql_delete($this->current_where_ary);
+		$this->results['count'] += $results['count'];
+		return $this->results;
 	}
 		
 }

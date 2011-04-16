@@ -2,6 +2,7 @@
 class Output {
 	
 	function Output(){
+		$this->results = array();
 	}
 	
 	function send_output($type){
