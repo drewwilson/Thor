@@ -48,7 +48,7 @@ class Api {
 		}
 		unset($v);
 		$tmp = $this->request_uri;
-		$model = singular(array_shift($tmp));
+		$model = array_shift($tmp);
 		$this->load_first_model($model);
 		$id = array_shift($tmp)+0;
 		if ($id > 0){
