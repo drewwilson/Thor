@@ -29,6 +29,7 @@ class Model {
 		$this->unique_fields = array();
 		$this->create_timestamps = array();
 		$this->update_timestamps = array();
+		$this->crement = array();
 		$this->results = array('count' => 0, 'items' => array());
 		$this->defaults = array(
 			'limit' => null,
@@ -98,17 +99,49 @@ class Model {
 			mysql_query("DELETE FROM $table WHERE account_id = {$GLOBALS['account']['id']}");
 		}
 	}
+
+	function _unique_check($sql) {
+		if ($query = mysql_query($sql)){
+			$query_count = mysql_num_rows($query);
+			if ($query_count > 0) {
+				return false;
+			} else {
+				return true;
+			}
+		} else {
+			return true;
+		}
+	}
 	
 	function prep_where_ary($method=''){
 		foreach($this->where_ary as &$where_ary){
 			foreach ($this->disabled as $prop) unset($where_ary[$prop]);
 			if (($method == 'post' || $method == 'put') && !empty($this->unique_fields)){
 				foreach ($this->unique_fields as $unique){
-					if (isset($where_ary[$unique])){
+					$continue = true;
+					$unique_str = "";
+					if (is_array($unique)){
+						foreach ($unique as $u){
+							if (isset($where_ary[$u])){
+								$unique_str .= " `$u` = '{$where_ary[$u]}' AND";
+							} else {
+								$continue = false;
+								break;
+							}
+						}
+						if (strlen($unique_str) > 3) $unique_str = substr($unique_str, 0, -3);
+					} else {
+						if (isset($where_ary[$unique])){
+							$unique_str = "`$unique` = '{$where_ary[$unique]}'";
+						} else {
+							$continue = false;
+						}
+					}
+					if ($continue){
 						$id = 0;
 						if (isset($where_ary['id'])) { $id = $where_ary['id']; }
-						if (!$this->_unique_check("SELECT id FROM `{$this->_table}` WHERE `$unique` = '{$where_ary[$unique]}' and id != $id LIMIT 1")){
-							$this->_error('error', $unique.' already exists');
+						if (!$this->_unique_check("SELECT id FROM `{$this->_table}` WHERE $unique_str and id != $id LIMIT 1")){
+							$this->_error('error', 'Record already exists');
 						}
 					}
 				}
@@ -118,6 +151,10 @@ class Model {
 				$api->security->encrypt($this->encrypt_fields, $where_ary);
 			}
 		}
+	}
+
+	function _crement($table, $field, $id, $plusmin = '+') {
+		mysql_query("UPDATE `$table` SET `$field` = $field $plusmin 1 WHERE `id` = $id");
 	}
 	
 	function _where_str($where_ary, $pre_text = "", $del = " AND") {
@@ -210,6 +247,17 @@ class Model {
 	}
 
 	function _sql_select($where_ary){
+		$limit = "";
+		if ($this->defaults['limit'] != null){
+			$limit = "LIMIT {$this->defaults['limit']}";
+			if ($this->defaults['offset'] != null){
+				$limit = "LIMIT {$this->defaults['offset']}, {$this->defaults['limit']}";
+			}
+		}
+		$order = "";
+		if ($this->defaults['order'] != null){
+			$order = "ORDER BY {$this->defaults['order']}";
+		}
 		if ($this->defaults['joins'] != ''){
 			$join_table = $this->defaults['joins'];
 			$join = " LEFT JOIN `{$this->defaults['joins']}` ON `{$this->_table}`.".singular($this->defaults['joins'])."_id = {$this->defaults['joins']}.id ";
@@ -219,10 +267,10 @@ class Model {
 			}
 			$where_ary = $where_tmp;
 			$this->_where_str($where_ary, "WHERE ");
-			return $this->_run_query("SELECT `{$this->_table}`.*, `$join_table`.* FROM `{$this->_table}` $join {$this->where_str} {$this->defaults['order']} {$this->defaults['limit']}", true);
+			return $this->_run_query("SELECT `{$this->_table}`.*, `$join_table`.* FROM `{$this->_table}` $join {$this->where_str} $order $limit", true);
 		} else {
 			$this->_where_str($where_ary,"WHERE ");
-			return $this->_run_query("SELECT * FROM `{$this->_table}` {$this->where_str} {$this->defaults['order']} {$this->defaults['limit']}", true);
+			return $this->_run_query("SELECT * FROM `{$this->_table}` {$this->where_str} $order $limit", true);
 		}
 	}
 
@@ -280,8 +328,9 @@ class Model {
 		} elseif ($query){ // SELECT
 			if (mysql_num_rows($query) > 0){
 				while ($row = $this->_mysql_fetch($query)){
-					if ($this->defaults['include'] != "" && isset($row[$this->defaults['include']."_id"])){
-						$this->{$this->defaults['include']}->where_ary[0]['id'] = $row[$this->defaults['include']."_id"];
+					$include = singular($this->defaults['include']);
+					if ($this->defaults['include'] != "" && isset($row[$include."_id"])){
+						$this->{$this->defaults['include']}->current_where_ary['id'] = $row[$include."_id"];
 						$tmp = $this->{$this->defaults['include']}->get();
 						$row[$this->defaults['include']] = $this->{$this->defaults['include']}->results['items'];
 						$this->{$this->defaults['include']}->results['items'] = array();
@@ -310,7 +359,7 @@ class Model {
 	/* END sql functions */
 	
 	function process_request($method){
-		$this->prep_where_ary($this->where_ary, $method);
+		$this->prep_where_ary($method);
 		foreach($this->where_ary as $where_ary){
 			$this->current_where_ary = $where_ary;
 			$this->{$method}();
@@ -335,12 +384,28 @@ class Model {
 	
 	function post(){
 		$results = $this->_sql_insert($this->current_where_ary);
+		if (!empty($this->crement) && $results['count'] > 0){
+			foreach($this->crement as $crement){
+				$id_field = singular($crement[0]).'_id';
+				if (isset($this->current_where_ary[$id_field])){
+					$this->_crement($crement[0], $crement[1], $this->current_where_ary[$id_field]);
+				}
+			}
+		}
 		$this->results['count'] += $results['count'];
 		return $this->get(false);
 	}
 	
 	function delete(){
-		$this->get(false);
+		$tmpresults = $this->get(false);
+		if (!empty($this->crement) && $tmpresults['count'] > 0){
+			foreach($this->crement as $crement){
+				$id_field = singular($crement[0]).'_id';
+				if (isset($item[$id_field])){
+					$this->_crement($crement[0], $crement[1], $tmpresults['items'][0][$id_field], '-');
+				}
+			}
+		}
 		// run delete after get(), that way we can still return the records
 		$results = $this->_sql_delete($this->current_where_ary);
 		$this->results['count'] += $results['count'];
