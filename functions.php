@@ -52,8 +52,12 @@ function curl_request($opts){
 	curl_setopt($ch, CURLOPT_URL, $opts['url']);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-	if (!empty($opts['headers'])){
+	if (isset($opts['headers']) && !empty($opts['headers'])){
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $opts['headers']);
+	}
+	if (isset($opts['httpauth']) && $opts['httpauth'] != ''){
+		curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+		curl_setopt($ch, CURLOPT_USERPWD, $opts['httpauth']);
 	}
 	$response = curl_exec($ch);
 	$info = curl_getinfo($ch);
