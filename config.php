@@ -2,7 +2,7 @@
 
 /*
 mysql_connect("localhost", "", "");
-mysql_select_db("db_name") or error(mysql_error());
+mysql_select_db("db_name") or exit(mysql_error());
 */
 
 $GLOBALS['security'] = array(
