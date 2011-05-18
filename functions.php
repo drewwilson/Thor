@@ -36,15 +36,34 @@ function stripslashes_deep(&$value) {
 	}
 }
 
-function curl_request($type, $url, $query, $json=true){
+function curl_request($opts){
 	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $url);
+	if ($opts['type'] == 'POST'){
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $opts['params']);
+	} else {
+		$opts['url'] .= '?';
+		foreach ($opts['params'] as $k => $v){
+			$url .= $k.'='.$v.'&';
+		}
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $opts['type']);
+	}
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $type);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $query);
+	curl_setopt($ch, CURLOPT_URL, $opts['url']);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+	if (isset($opts['headers']) && !empty($opts['headers'])){
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $opts['headers']);
+	}
+	if (isset($opts['httpauth']) && $opts['httpauth'] != ''){
+		curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+		curl_setopt($ch, CURLOPT_USERPWD, $opts['httpauth']);
+	}
 	$response = curl_exec($ch);
+	$info = curl_getinfo($ch);
 	curl_close($ch);
-	return ($json) ? json_decode($response) : $response;
+	return array('response' => $response, 'info' => $info);
 }
+
 
 ?>

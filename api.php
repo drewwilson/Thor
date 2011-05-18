@@ -48,7 +48,7 @@ class Api {
 		}
 		unset($v);
 		$tmp = $this->request_uri;
-		$model = singular(array_shift($tmp));
+		$model = array_shift($tmp);
 		$this->load_first_model($model);
 		$id = array_shift($tmp)+0;
 		if ($id > 0){
@@ -59,9 +59,9 @@ class Api {
 		$this->$model->defaults = $this->defaults;
 		
 		// run the request method
-		$this->$model->{$this->method}();
+		$results = $this->$model->process_request($this->method);
 		
-		$this->$model->push_results();
+		$this->$model->push_results($results);
 	}
 	
 	function load_first_model($model){
